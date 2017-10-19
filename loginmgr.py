@@ -33,6 +33,7 @@ import readline
 import cmd
 import logging
 import operator
+import traceback
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -416,10 +417,10 @@ class Logins():
             print(printout)
         print()
 
-    @property
-    def latest_record(self):
-        return sorted([time.strptime(login['ctime'], TIMEFORMAT) for login in self.logins.values() if login.get('ctime')])[-1]
-
+    def latest_record(self, nr):
+        print('NR', nr)
+        loginswithctime = [self.logins[login] for login in self.logins if self.logins[login].get('ctime')]
+        return sorted(loginswithctime, key=lambda l: time.strptime(l['ctime'], TIMEFORMAT))[-nr:]
 
     def load(self, byteobj):
         '''Take in bytes decode json to logins data
@@ -820,6 +821,19 @@ class MainInterpreter(cmd.Cmd):
         print('"add <login name>" Bring you to the login entry add prompt')
     # end add
 
+    # latest
+    def do_latest(self, args):
+        try:
+            nr = int(args)
+            for login in self.logins.latest_record(nr):
+                Logins.loginprinter(login)
+        except Exception as exc:
+            traceback.print_exc(file=sys.stdout)
+            self.help_latest()
+
+    def help_latest(self):
+        print('"latest <nr>" list latest records')
+    # end latest
 
     # revls
     def do_revls(self, args):
@@ -896,7 +910,7 @@ def main():
         logins = Logins(None, initializing=True)
     print('Revision {0[revision]}'.format(logins.logins['META']))
     print('{} entries'.format(len(logins.logins) - 2))
-    logger.debug('Latest login record:%s', logins.latest_record)
+    logger.debug('Latest login record:%s', logins.latest_record(5))
 
     if args.entry:
         entryprint(logins, args.entry)
