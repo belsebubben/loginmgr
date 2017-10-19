@@ -32,10 +32,12 @@ import base64
 import readline
 import cmd
 import logging
+import operator
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
 
 DEBUG = True
 COLORS = {'grey': '\033[1;30m', 'red':'\033[1;31m', 'green':'\033[1;32m', 'yellow':'\033[1;33m',\
@@ -341,8 +343,8 @@ class Logins():
         login = {}
         if not edit:
             login['ctime'] = time.strftime(TIMEFORMAT)
+            login['mtime'] = time.strftime(TIMEFORMAT)
         if edit:
-            # Some info so that we can retreive last editions
             login['mtime'] = time.strftime(TIMEFORMAT)
             if 'old_revisions' in login:
                 login['old_revisions'].append(self.revision) 
@@ -414,6 +416,10 @@ class Logins():
             print(printout)
         print()
 
+    @property
+    def latest_record(self):
+        return sorted([time.strptime(login['ctime'], TIMEFORMAT) for login in self.logins.values() if login.get('ctime')])[-1]
+
 
     def load(self, byteobj):
         '''Take in bytes decode json to logins data
@@ -453,6 +459,11 @@ class Logins():
                 self.load(byteobj)
 
 #### Filesystem handling ####
+def getfilebytes(filepath):
+    with open(filepath, 'rb') as fh:
+        byteobj = fh.read()
+        logger.debug('Returning read file "%s"', type(byteobj))
+        return byteobj
 
 class FileSysHandler():
     saveformat = '%Y-%m-%d-%H%M%S.enc'
@@ -532,10 +543,7 @@ class FileSysHandler():
                 return False
         if os.path.islink(self.encryptedpath):
             logger.info('opening %s', self.filepath)
-            with open(self.filepath, 'rb') as fh:
-                byteobj = fh.read()
-                logger.debug('Returning read file "%s"', type(byteobj))
-                return byteobj
+            return getfilebytes(self.filepath)
         else:
             # todo glob find old files and open one of them. else initialize
             return self.initial_setup()
@@ -806,9 +814,11 @@ class MainInterpreter(cmd.Cmd):
         return None
         #commander.cmdloop()
 
+
     def help_add(self):
-        print('"add" Bring you to the login entry add prompt')
+        print('"add <login name>" Bring you to the login entry add prompt')
     # end add
+
 
     # revls
     def do_revls(self, args):
@@ -885,6 +895,7 @@ def main():
         logins = Logins(None, initializing=True)
     print('Revision {0[revision]}'.format(logins.logins['META']))
     print('{} entries'.format(len(logins.logins) - 2))
+    logger.debug('Latest login record:%s', logins.latest_record)
 
     if args.entry:
         entryprint(logins, args.entry)
