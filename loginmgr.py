@@ -769,6 +769,7 @@ class MainInterpreter(cmd.Cmd):
         self.entry = entry
         if entry in self.logins.logins and not edit:
             logger.warning('Entry for {0} already exist, either edit or remove existing'.format(0))
+            return
         elif entry in self.logins.logins and edit:
             logger.info('\nOld entry')
             Logins.loginprinter(self.logins.logins[self.entry])
