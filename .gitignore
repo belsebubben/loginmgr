@@ -1,2 +1,4 @@
 TEST*
 __pycache__
+*.swp
+.*.swp
