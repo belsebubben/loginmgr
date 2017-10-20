@@ -774,7 +774,7 @@ class MainInterpreter(cmd.Cmd):
         elif entry in self.logins.logins and edit:
             logger.info('\nOld entry')
             Logins.loginprinter(self.logins.logins[self.entry])
-            self.newlogin = self.logins.logins[self.entry]
+            self.newlogin = self.logins.logins[self.entry].copy()
             logger.info('\nEdit fields (empty to keep old value)')
             self.editedlogin = input('Login for {0} old:"{1}" :'.format(entry, self.newlogin.get('login', '')))
             self.newlogin['login'] = self.editedlogin or self.newlogin.get('login', '')
