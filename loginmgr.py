@@ -295,6 +295,8 @@ def to_clipboard(text):
 def quit(filesys, logins, save=True, export=False):
     logger.debug('Quitting with logins: {0}, filesys: {1}'.format(logins, filesys))
     print()
+    if logins.changed:
+        logger.warning('Changes will be lost if you do not provide password!')
     if not save:
         sys.exit(0)
     encryptedbytes = encrypt(logins.save())
@@ -342,15 +344,12 @@ class Logins():
             return
 
         login = {}
-        if not edit:
-            login['ctime'] = time.strftime(TIMEFORMAT)
-            login['mtime'] = time.strftime(TIMEFORMAT)
         if edit:
-            login['mtime'] = time.strftime(TIMEFORMAT)
             if 'old_revisions' in login:
                 login['old_revisions'].append(self.revision) 
             else:
                 login['old_revisions'] = [self.revision]
+
         for k, v in config.items():
             if k == 'name':
                 next
@@ -369,6 +368,8 @@ class Logins():
         self.logins[config['name']] = login
         if edit: # we only change revision on edit and remove
             self.setupdated(edit, remove=False, login=login)
+            self.changes = True
+        login['mtime'] = time.strftime(TIMEFORMAT)
 
     def edit(self, config={}):
         self.add(config={}, edit=True)
@@ -380,6 +381,7 @@ class Logins():
             logger.warning('%s is not a configured login', name)
             return False
         self.setupdated(edit=False, remove=True, login=removed)
+        self.changes = True
         self.logins['META']['deleted'].append((name, self.revision))
         logger.warning('Logins can be restored from older revisions\
                 (i.e history files use revls of search to find\
@@ -417,10 +419,10 @@ class Logins():
             print(printout)
         print()
 
-    def latest_record(self, nr):
+    def latest_records(self, nr):
         print('NR', nr)
-        loginswithctime = [self.logins[login] for login in self.logins if self.logins[login].get('ctime')]
-        return sorted(loginswithctime, key=lambda l: time.strptime(l['ctime'], TIMEFORMAT))[-nr:]
+        loginswithmtime = [self.logins[login] for login in self.logins if self.logins[login].get('mtime')]
+        return sorted(loginswithmtime, key=lambda l: time.strptime(l['mtime'], TIMEFORMAT))[-nr:]
 
     def load(self, byteobj):
         '''Take in bytes decode json to logins data
@@ -450,6 +452,7 @@ class Logins():
         self.deleted = []
         self.edited = []
         self.added = []
+        self.changes = False
         if initializing:
             self.logins = {}
             self.revision = 1
@@ -825,7 +828,7 @@ class MainInterpreter(cmd.Cmd):
     def do_latest(self, args):
         try:
             nr = int(args)
-            for login in self.logins.latest_record(nr):
+            for login in self.logins.latest_records(nr):
                 Logins.loginprinter(login)
         except Exception as exc:
             traceback.print_exc(file=sys.stdout)
@@ -910,7 +913,7 @@ def main():
         logins = Logins(None, initializing=True)
     print('Revision {0[revision]}'.format(logins.logins['META']))
     print('{} entries'.format(len(logins.logins) - 2))
-    logger.debug('Latest login record:%s', logins.latest_record(5))
+    logger.debug('Latest login record:%s', logins.latest_records(5))
 
     if args.entry:
         entryprint(logins, args.entry)
