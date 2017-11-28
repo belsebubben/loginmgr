@@ -368,7 +368,6 @@ class Logins():
         self.logins[config['name']] = login
         if edit: # we only change revision on edit and remove
             self.setupdated(edit, remove=False, login=login)
-            self.changes = True
         login['mtime'] = time.strftime(TIMEFORMAT)
 
     def edit(self, config={}):
@@ -381,7 +380,6 @@ class Logins():
             logger.warning('%s is not a configured login', name)
             return False
         self.setupdated(edit=False, remove=True, login=removed)
-        self.changes = True
         self.logins['META']['deleted'].append((name, self.revision))
         logger.warning('Logins can be restored from older revisions\
                 (i.e history files use revls of search to find\
@@ -452,7 +450,6 @@ class Logins():
         self.deleted = []
         self.edited = []
         self.added = []
-        self.changes = False
         if initializing:
             self.logins = {}
             self.revision = 1
